@@ -1,0 +1,16 @@
+[workspace.package]
+authors = [
+    "goro-network Developers <https://github.com/goro-network>",
+    "Aditya Kresna <kresna@gemtek.id>",
+]
+edition = "2021"
+license-file = "LICENSE"
+publish = false
+repository = "https://github.com/goro-network/goro-api"
+version = "1.0.0-alpha.5"
+
+[workspace]
+members = ["lib", "lib-unity"]
+
+[workspace.dependencies]
+goro-api = { path = "lib", default-features = false }

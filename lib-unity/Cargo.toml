@@ -1,0 +1,21 @@
+[package]
+name = "goro-api-unity"
+description = "GoRo Network - API Library for Unity"
+authors.workspace = true
+edition.workspace = true
+license-file.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[lib]
+name = "goroapi_unity"
+crate-type = ["staticlib"]
+
+[features]
+default = []
+gen-headers = ["safer-ffi/headers"]
+
+[dependencies]
+goro-api = { workspace = true, features = ["unity"] }
+safer-ffi = { version = "0.0.10", features = ["derives"] }
