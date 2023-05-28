@@ -10,13 +10,15 @@ version.workspace = true
 
 [features]
 default = ["std"]
-std = ["blake3/std"]
-neon = ["blake3/neon"]
+std = ["blake3/std", "morus/std", "zeroize/std", "zeroize/derive"]
+neon = ["std", "blake3/neon", "zeroize/aarch64"]
 unity = ["std", "wasm"]
-wasm = ["blake3/pure"]
+wasm = ["blake3/pure", "morus"]
 
 [dependencies]
 anyhow = { version = "1.0.71", default-features = false }
 blake3 = { version = "1.3.3", default-features = false, optional = true }
+morus = { version = "0.1.5", git = "https://github.com/goro-network/morus-rs.git", rev = "15df422", optional = true, default-features = false }
 thiserror = "1.0.40"
 tiny-bip39 = { version = "1.0.0", default-features = false }
+zeroize = { version = "1.6.0", default-features = false, optional = true }
