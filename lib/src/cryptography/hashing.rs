@@ -1,7 +1,5 @@
 use crate::errors::GoRoError;
-use blake3::{
-    hash as blake3_hash, keyed_hash as blake3_keyed_hash, Hasher as Blake3Hasher, KEY_LEN, OUT_LEN,
-};
+use blake3::{hash as blake3_hash, keyed_hash as blake3_keyed_hash, Hasher as Blake3Hasher, KEY_LEN, OUT_LEN};
 
 pub struct Hasher {
     inner: Blake3Hasher,
@@ -49,11 +47,7 @@ impl Hasher {
         Ok(())
     }
 
-    pub fn hash_once(
-        key: Option<&[u8]>,
-        data: &[u8],
-        hash_output: &mut [u8],
-    ) -> Result<(), GoRoError> {
+    pub fn hash_once(key: Option<&[u8]>, data: &[u8], hash_output: &mut [u8]) -> Result<(), GoRoError> {
         let hash;
 
         if hash_output.len() != OUT_LEN {

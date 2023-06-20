@@ -12,5 +12,9 @@ version = "1.0.0-alpha.5"
 [workspace]
 members = ["lib", "lib-unity"]
 
+[patch.crates-io]
+ss58-registry = { git = "https://github.com/goro-network/ss58-registry", rev = "984cc02" }
+
 [workspace.dependencies]
 goro-api = { path = "lib", default-features = false }
+ss58-registry = { git = "https://github.com/goro-network/ss58-registry", rev = "984cc02", default-features = false }

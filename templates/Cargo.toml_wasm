@@ -1,0 +1,38 @@
+# target_arch: wasm
+
+[package]
+name = "goro-api"
+description = "GoRo Network - API Library"
+authors.workspace = true
+edition.workspace = true
+license-file.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+anyhow = { version = "1.0.71", default-features = false }
+blake2 = { version = "0.10.6", default-features = false }
+blake3 = { version = "1.4.0", default-features = false }
+bs58 = { version = "0.4.0", default-features = false }
+ed25519-dalek = { version = "1.0.1", default-features = false, features = [
+    "u32_backend",
+] }
+getrandom = { version = "0.1.16", default-features = false, features = [
+    "js-sys",
+    "wasm-bindgen",
+] }
+hex = { version = "0.4.3", default-features = false }
+morus = { version = "0.1.5", git = "https://github.com/goro-network/morus-rs.git", rev = "15df422", default-features = false }
+schnorrkel = { version = "0.9.1", default-features = false, features = [
+    "getrandom",
+    "rand",
+    "u32_backend",
+    "wasm-bindgen",
+] }
+thiserror = "1.0.40"
+tiny-bip39 = { version = "1.0.0", default-features = false }
+zeroize = { version = "1.6.0", default-features = false, features = ["derive"] }
+
+[dev-dependencies]
+sp-core = "21.0.0"

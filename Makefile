@@ -31,8 +31,8 @@ fmt: | clippy
 	@cargo fmt --all --check
 
 test: | fmt
-	@echo "\033[34m\nUnit & Integration Testing...\033\n[0m"
-	@cargo test --all-features
+	@echo "\033[34m\nUnit & Integration Testing (DEFAULT/STD)...\033\n[0m"
+	@cargo test
 
 check: | test
 	@echo "\033[34m\nAll Check Passed!\033\n[0m"
@@ -48,7 +48,7 @@ deep-clean: | clean
 
 deep-refresh: | deep-clean check debug prepare
 
-prepare: 
+prepare:
 	@mkdir -p ${OUTPUT_DIR_UNITY_ANDROID_X86_64}
 	@mkdir -p ${OUTPUT_DIR_UNITY_ANDROID_AARCH64}
 	@mkdir -p ${OUTPUT_DIR_UNITY_WEBGL}
@@ -56,26 +56,36 @@ prepare:
 
 check-unity-android:
 	@echo "\033[34m\nChecking - Unity Android Library...\033\n[0m"
+	@templates/switch-cargo-deps aarch64
 	@cargo check --target aarch64-linux-android --package goro-api-unity
+	@templates/switch-cargo-deps default
 	@cargo check --target x86_64-linux-android --package goro-api-unity
+	@templates/switch-cargo-deps default
 
 unity-android: | prepare
-	@echo "\033[34m\nChecking - Unity Android Library...\033\n[0m"
+	@echo "\033[34m\nBuilding - Unity Android Library...\033\n[0m"
+	@templates/switch-cargo-deps aarch64
 	@cargo build --release --target aarch64-linux-android --package goro-api-unity
 	@cp target/aarch64-linux-android/release/libgoroapi_unity.a ${OUTPUT_DIR_UNITY_ANDROID_AARCH64}/
+	@templates/switch-cargo-deps default
 	@cargo build --release --target x86_64-linux-android --package goro-api-unity
 	@cp target/x86_64-linux-android/release/libgoroapi_unity.a ${OUTPUT_DIR_UNITY_ANDROID_X86_64}/
 	@echo "\033[91m\nPlease check \"${OUTPUT_DIR_UNITY_ANDROID}\" directory\033[0m"
+	@templates/switch-cargo-deps default
 
 check-unity-webgl:
 	@echo "\033[34m\nChecking - Unity WebGL Library...\033\n[0m"
+	@templates/switch-cargo-deps wasm
 	@cargo check --target wasm32-unknown-emscripten --package goro-api-unity
+	@templates/switch-cargo-deps default
 
 unity-webgl: | prepare
-	@echo "\033[34m\nChecking - Unity WebGL Library...\033\n[0m"
+	@echo "\033[34m\nBuilding - Unity WebGL Library...\033\n[0m"
+	@templates/switch-cargo-deps wasm
 	@cargo build --release --target wasm32-unknown-emscripten --package goro-api-unity
 	@cp target/wasm32-unknown-emscripten/release/libgoroapi_unity.a ${OUTPUT_DIR_UNITY_WEBGL}/
 	@echo "\033[91m\nPlease check \"${OUTPUT_DIR_UNITY_WEBGL}\" directory\033[0m"
+	@templates/switch-cargo-deps default
 
 check-unity: | check-unity-android check-unity-webgl
 

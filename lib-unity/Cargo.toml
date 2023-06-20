@@ -17,5 +17,5 @@ default = []
 gen-headers = ["safer-ffi/headers"]
 
 [dependencies]
-goro-api = { workspace = true, features = ["unity"] }
+goro-api = { workspace = true }
 safer-ffi = { version = "0.0.10", features = ["derives"] }

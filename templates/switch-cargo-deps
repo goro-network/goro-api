@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+set -e
+
+case ${1} in
+    default)
+        echo -e "\033[0;35m\nSwitching to \"default\" Cargo.toml...\033[0m"
+        cp templates/Cargo.toml_default lib/Cargo.toml
+        ;;
+    aarch64)
+        echo -e "\033[0;35m\nSwitching to \"aarch64\" Cargo.toml...\033[0m"
+        cp templates/Cargo.toml_aarch64 lib/Cargo.toml
+        ;;
+    wasm)
+        echo -e "\033[0;35m\nSwitching to \"wasm\" Cargo.toml...\033[0m"
+        cp templates/Cargo.toml_wasm lib/Cargo.toml
+        ;;
+    *)
+        echo -e "\033[0;91m\nArguments unsupported => \"$@\"\033[0m"
+        ;;
+esac

@@ -123,12 +123,7 @@ pub fn goro_encrypt(nonce: &CVec<u8>, key: &CVec<u8>, input_data: &CVec<u8>) -> 
 }
 
 #[ffi_export]
-pub fn goro_decrypt(
-    nonce: &CVec<u8>,
-    key: &CVec<u8>,
-    tag: &CVec<u8>,
-    input_data: &CVec<u8>,
-) -> BytesResult {
+pub fn goro_decrypt(nonce: &CVec<u8>, key: &CVec<u8>, tag: &CVec<u8>, input_data: &CVec<u8>) -> BytesResult {
     let mut result = BytesResult {
         bytes: Vec::new().into(),
         error_code: 0,
@@ -183,9 +178,7 @@ pub fn goro_decrypt(
 #[safer_ffi::cfg_headers]
 #[test]
 fn generate_headers() -> std::io::Result<()> {
-    safer_ffi::headers::builder()
-        .to_file("libgoroapi_unity.h")?
-        .generate()
+    safer_ffi::headers::builder().to_file("libgoroapi_unity.h")?.generate()
 }
 
 // endregion
