@@ -20,7 +20,7 @@ pub struct SignerKeypair {
 
 impl SignerKeypair {
     pub const LENGTH_SECRET: usize = 32;
-    pub const LENGTH_PUBLIC: usize = SignerAccount::LENGTH;
+    pub const LENGTH_PUBLIC: usize = SignerAccount::PUBKEY_LENGTH;
     pub const LENGTH_SIGNATURE: usize = 64;
     pub const SIGNING_CONTEXT: &[u8] = b"substrate";
     pub const SR25519_EXPANSION_MODE: schnorrkel::ExpansionMode = schnorrkel::MiniSecretKey::ED25519_MODE;
@@ -48,7 +48,7 @@ impl SignerKeypair {
         if secret_bytes.len() != Self::LENGTH_SECRET {
             return Err(GoRoError::BadInputBufferLength {
                 expected: Self::LENGTH_SECRET,
-                got: secret_bytes.len(),
+                given: secret_bytes.len(),
             });
         }
 
@@ -64,7 +64,7 @@ impl SignerKeypair {
         if secret_bytes.len() != Self::LENGTH_SECRET {
             return Err(GoRoError::BadInputBufferLength {
                 expected: Self::LENGTH_SECRET,
-                got: secret_bytes.len(),
+                given: secret_bytes.len(),
             });
         }
 

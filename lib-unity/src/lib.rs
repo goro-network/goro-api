@@ -115,7 +115,7 @@ pub fn goro_encrypt(nonce: &CVec<u8>, key: &CVec<u8>, input_data: &CVec<u8>) -> 
     let mut key_array = [0u8; encryption::KEY_LENGTH];
     nonce_array.copy_from_slice(&nonce[..]);
     key_array.copy_from_slice(&key[..]);
-    result.bytes = encryption::encrypt_alloc(&nonce_array, &key_array, input_data)
+    result.bytes = encryption::encrypt(&nonce_array, &key_array, input_data)
         .into_single_buffer()
         .into();
 
@@ -158,7 +158,7 @@ pub fn goro_decrypt(nonce: &CVec<u8>, key: &CVec<u8>, tag: &CVec<u8>, input_data
     key_array.copy_from_slice(&key[..]);
     tag_array.copy_from_slice(&tag[..]);
 
-    match encryption::decrypt_alloc(&nonce_array, &key_array, &tag_array, input_data) {
+    match encryption::decrypt(&nonce_array, &key_array, &tag_array, input_data) {
         Err(err) => {
             result.error_code = err.into();
         }

@@ -19,30 +19,30 @@ OUTPUT_DIR_WASM32			+=	"${OUTPUT_DIR}/wasm32"
 all: | prepare wasm32 unity
 
 bench:
-	@echo "\033[34m\nBenchmarking...\033\n[0m"
+	@echo "\033[34m\nBenchmarking...\033[0m"
 	@cargo bench
 
 clippy:
-	@echo "\033[34m\nClippy Check...\033\n[0m"
+	@echo "\033[34m\nClippy Check...\033[0m"
 	@cargo clippy --all -- -D warnings
 
 fmt: | clippy
-	@echo "\033[34m\nFormatting Check...\033\n[0m"
+	@echo "\033[34m\nFormatting Check...\033[0m"
 	@cargo fmt --all --check
 
 test: | fmt
-	@echo "\033[34m\nUnit & Integration Testing (DEFAULT/STD)...\033\n[0m"
+	@echo "\033[34m\nUnit & Integration Testing (DEFAULT/STD)...\033[0m"
 	@cargo test
 
 check: | test
-	@echo "\033[34m\nAll Check Passed!\033\n[0m"
+	@echo "\033[34m\nAll Check Passed!\033[0m"
 
 clean:
-	@echo "\033[34m\nCleaning Up...\033\n[0m"
+	@echo "\033[34m\nCleaning Up...\033[0m"
 	@cargo clean
 
 deep-clean: | clean
-	@echo "\033[34m\nDeep Clean Up...\033\n[0m"
+	@echo "\033[34m\nDeep Clean Up...\033[0m"
 	@rm -rf ${OUTPUT_DIR}
 	@rm Cargo.lock
 
@@ -55,7 +55,7 @@ prepare:
 	@mkdir -p ${OUTPUT_DIR_WASM32}
 
 check-unity-android:
-	@echo "\033[34m\nChecking - Unity Android Library...\033\n[0m"
+	@echo "\033[34m\nChecking - Unity Android Library...\033[0m"
 	@templates/switch-cargo-deps aarch64
 	@cargo check --target aarch64-linux-android --package goro-api-unity
 	@templates/switch-cargo-deps default
@@ -63,7 +63,7 @@ check-unity-android:
 	@templates/switch-cargo-deps default
 
 unity-android: | prepare
-	@echo "\033[34m\nBuilding - Unity Android Library...\033\n[0m"
+	@echo "\033[34m\nBuilding - Unity Android Library...\033[0m"
 	@templates/switch-cargo-deps aarch64
 	@cargo build --release --target aarch64-linux-android --package goro-api-unity
 	@cp target/aarch64-linux-android/release/libgoroapi_unity.a ${OUTPUT_DIR_UNITY_ANDROID_AARCH64}/
@@ -74,13 +74,13 @@ unity-android: | prepare
 	@templates/switch-cargo-deps default
 
 check-unity-webgl:
-	@echo "\033[34m\nChecking - Unity WebGL Library...\033\n[0m"
+	@echo "\033[34m\nChecking - Unity WebGL Library...\033[0m"
 	@templates/switch-cargo-deps wasm
 	@cargo check --target wasm32-unknown-emscripten --package goro-api-unity
 	@templates/switch-cargo-deps default
 
 unity-webgl: | prepare
-	@echo "\033[34m\nBuilding - Unity WebGL Library...\033\n[0m"
+	@echo "\033[34m\nBuilding - Unity WebGL Library...\033[0m"
 	@templates/switch-cargo-deps wasm
 	@cargo build --release --target wasm32-unknown-emscripten --package goro-api-unity
 	@cp target/wasm32-unknown-emscripten/release/libgoroapi_unity.a ${OUTPUT_DIR_UNITY_WEBGL}/

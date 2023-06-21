@@ -18,18 +18,17 @@ bs58 = { version = "0.4.0", default-features = false }
 ed25519-dalek = { version = "1.0.1", default-features = false, features = [
     "u32_backend",
 ] }
-getrandom = { version = "0.1.16", default-features = false, features = [
-    "js-sys",
+getrandom = { version = "0.2.10", default-features = false, features = [
+    "js",
     "wasm-bindgen",
 ] }
 hex = { version = "0.4.3", default-features = false }
 morus = { version = "0.1.5", git = "https://github.com/goro-network/morus-rs.git", rev = "15df422", default-features = false }
-schnorrkel = { version = "0.9.1", default-features = false, features = [
+schnorrkel = { version = "0.10.2", default-features = false, features = [
     "getrandom",
-    "rand",
     "u32_backend",
-    "wasm-bindgen",
 ] }
+ss58-registry = { git = "https://github.com/goro-network/ss58-registry.git", default-features = false, rev = "984cc02", version = "1.41.0" }
 thiserror = "1.0.40"
 tiny-bip39 = { version = "1.0.0", default-features = false }
 zeroize = { version = "1.6.0", default-features = false, features = ["derive"] }

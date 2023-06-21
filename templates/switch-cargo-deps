@@ -4,7 +4,7 @@ set -e
 
 case ${1} in
     default)
-        echo -e "\033[0;35m\nSwitching to \"default\" Cargo.toml...\033[0m"
+        echo -e "\033[0;35m\nSwitching back to \"default\" Cargo.toml...\033[0m"
         cp templates/Cargo.toml_default lib/Cargo.toml
         ;;
     aarch64)

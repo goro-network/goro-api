@@ -12,12 +12,14 @@ pub enum GoRoError {
     BadTagOnDecryption,
     #[error("Invalid Nonce length during encryption/decryption")]
     BadNonce,
-    #[error("Bad input buffer length (expected {expected:?}, got {got:?}!")]
-    BadInputBufferLength { expected: usize, got: usize },
+    #[error("Bad input buffer length (expected {expected:?} | given {given:?}!")]
+    BadInputBufferLength { expected: usize, given: usize },
     #[error("Bad SS58 format")]
     BadSs58Format,
     #[error("Critical failure, cannot generate random data!")]
     CryptoFailure,
+    #[error("Bad SS58 character length (max {max:?} | min {min:?} | given {given:?}!")]
+    BadSs58Length { max: usize, min: usize, given: usize },
 }
 
 impl From<GoRoError> for i32 {
@@ -31,6 +33,7 @@ impl From<GoRoError> for i32 {
             GoRoError::BadInputBufferLength { .. } => -105,
             GoRoError::BadSs58Format => -106,
             GoRoError::CryptoFailure => -107,
+            GoRoError::BadSs58Length { .. } => -108,
         }
     }
 }

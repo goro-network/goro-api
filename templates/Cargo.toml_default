@@ -16,10 +16,10 @@ blake2 = { version = "0.10.6", features = ["simd_asm"] }
 blake3 = { version = "1.4.0" }
 bs58 = { version = "0.4.0" }
 ed25519-dalek = { version = "1.0.1" }
-getrandom = { version = "0.1.16" }
+getrandom = { version = "0.2.10" }
 hex = { version = "0.4.3", default-features = false }
 morus = { version = "0.1.5", git = "https://github.com/goro-network/morus-rs.git", rev = "15df422" }
-schnorrkel = { version = "0.9.1" }
+schnorrkel = { version = "0.10.2" }
 ss58-registry = { git = "https://github.com/goro-network/ss58-registry.git", rev = "984cc02", version = "1.41.0" }
 thiserror = "1.0.40"
 tiny-bip39 = { version = "1.0.0", default-features = false }

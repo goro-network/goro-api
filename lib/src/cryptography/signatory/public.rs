@@ -2,57 +2,66 @@ use crate::errors::GoRoError;
 use blake2::{Blake2b512, Digest};
 use ss58_registry::Ss58AddressFormatRegistry;
 use std::fmt::Display;
-use std::ops::{Deref, DerefMut, Range};
+use std::ops::{Deref, DerefMut, Range, RangeInclusive};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct SignerPublicKey([u8; Self::LENGTH]);
+pub struct SignerPublicKey([u8; Self::PUBKEY_LENGTH]);
 
 impl SignerPublicKey {
-    pub const LENGTH: usize = 32;
-    pub const LENGTH_SS58_PREFIX: usize = 2;
-    pub const LENGTH_SS58_SUFFIX: usize = 2;
-    pub const LENGTH_SS58_OTHER: usize = Self::LENGTH_SS58_PREFIX + Self::LENGTH_SS58_SUFFIX;
-    pub const LENGTH_SS58: usize = Self::LENGTH + Self::LENGTH_SS58_OTHER;
-    pub const SS58_PUBKEY_REF_RANGE: Range<usize> = Self::LENGTH_SS58_PREFIX..(Self::LENGTH_SS58 - Self::LENGTH_SS58_SUFFIX);
-    pub const PREFIX_SS58: &[u8; 7] = b"SS58PRE";
     pub const PREFIX_DEFAULT: u16 = Self::PREFIX_GORO;
     pub const PREFIX_GORO: u16 = Ss58AddressFormatRegistry::GoroAccount as u16;
     pub const PREFIX_KRIGAN: u16 = Ss58AddressFormatRegistry::KriganAccount as u16;
+    pub const PREFIX_SS58: &[u8; 7] = b"SS58PRE";
+    pub const PUBKEY_LENGTH: usize = 32;
+    pub const SS58_BYTES_INFIX_RANGE: Range<usize> = Self::SS58_BYTES_PREFIX_LENGTH..Self::SS58_BYTES_SUFFIX_INDEX;
+    pub const SS58_BYTES_LENGTH: usize = Self::PUBKEY_LENGTH + Self::SS58_BYTES_SUFFIX_PREFIX_LENGTH;
+    pub const SS58_BYTES_PREFIX_LENGTH: usize = 2;
+    pub const SS58_BYTES_SUFFIX_INDEX: usize = Self::SS58_BYTES_LENGTH - Self::SS58_BYTES_SUFFIX_LENGTH;
+    pub const SS58_BYTES_SUFFIX_LENGTH: usize = 2;
+    pub const SS58_BYTES_SUFFIX_RANGE: Range<usize> = Self::SS58_BYTES_SUFFIX_INDEX..Self::SS58_BYTES_LENGTH;
+    pub const SS58_BYTES_SUFFIX_PREFIX_LENGTH: usize = Self::SS58_BYTES_PREFIX_LENGTH + Self::SS58_BYTES_SUFFIX_LENGTH;
+    pub const SS58_STRING_LENGTH_RANGE: RangeInclusive<usize> = Self::SS58_STRING_MIN_LENGTH..=Self::SS58_STRING_MAX_LENGTH;
+    pub const SS58_STRING_MAX_LENGTH: usize = 50;
+    pub const SS58_STRING_MIN_LENGTH: usize = Self::SS58_BYTES_SUFFIX_PREFIX_LENGTH;
 
     pub fn from_slice(source: &[u8]) -> Result<Self, GoRoError> {
-        if source.len() != Self::LENGTH {
+        if source.len() != Self::PUBKEY_LENGTH {
             return Err(GoRoError::BadInputBufferLength {
-                expected: Self::LENGTH,
-                got: source.len(),
+                expected: Self::PUBKEY_LENGTH,
+                given: source.len(),
             });
         }
 
-        let mut inner = [0; Self::LENGTH];
+        let mut inner = [0; Self::PUBKEY_LENGTH];
         inner.copy_from_slice(source);
 
         Ok(Self(inner))
     }
 
     pub fn get_goro_address(&self) -> String {
-        self.get_string_with_prefix(Self::PREFIX_GORO)
+        self.get_ss58_string(Self::PREFIX_GORO)
     }
 
     pub fn get_krigan_address(&self) -> String {
-        self.get_string_with_prefix(Self::PREFIX_KRIGAN)
+        self.get_ss58_string(Self::PREFIX_KRIGAN)
     }
 
     pub fn from_ss58(ss58_string: &str) -> Result<Self, GoRoError> {
-        let decoded_ss58 = bs58::decode(ss58_string).into_vec().map_err(|_| GoRoError::BadSs58Format)?;
+        let character_count = ss58_string.len();
 
-        if decoded_ss58.len() != Self::LENGTH_SS58 {
-            return Err(GoRoError::BadInputBufferLength {
-                expected: Self::LENGTH,
-                got: (decoded_ss58.len() - Self::LENGTH_SS58_OTHER),
+        if !Self::SS58_STRING_LENGTH_RANGE.contains(&character_count) {
+            return Err(GoRoError::BadSs58Length {
+                max: Self::SS58_STRING_MAX_LENGTH,
+                min: Self::SS58_STRING_MIN_LENGTH,
+                given: character_count,
             });
         }
 
+        let mut decoded_buffer = [0u8; Self::SS58_BYTES_LENGTH];
+        let _ = bs58::decode(ss58_string).into(&mut decoded_buffer); // infallible because above lines
+
         let mut result = Self::default();
-        result.copy_from_slice(&decoded_ss58[Self::SS58_PUBKEY_REF_RANGE]);
+        result.copy_from_slice(&decoded_buffer[Self::SS58_BYTES_INFIX_RANGE]);
 
         Ok(result)
     }
@@ -60,8 +69,8 @@ impl SignerPublicKey {
     pub fn from_hex_bytes(hex_bytes: &str) -> Result<Self, GoRoError> {
         let mut result = Self::default();
         hex::decode_to_slice(hex_bytes, &mut result[..]).map_err(|_| GoRoError::BadInputBufferLength {
-            expected: Self::LENGTH,
-            got: hex_bytes.len() / 2,
+            expected: Self::PUBKEY_LENGTH,
+            given: hex_bytes.len() / 2,
         })?;
 
         Ok(result)
@@ -77,26 +86,35 @@ impl SignerPublicKey {
         }
     }
 
-    fn get_string_with_prefix(&self, prefix: u16) -> String {
-        let ident = prefix & 0b0011_1111_1111_1111; // 14-bit only
-        let mut version = match ident {
-            0..=63 => vec![ident as u8],
+    fn get_ss58_string(&self, prefix: u16) -> String {
+        let mut hash_buffer = [0u8; 64]; // 512-bit
+        let mut ss58_string_buffer = [0u8; Self::SS58_STRING_MAX_LENGTH];
+        let mut version_buffer = [0u8; Self::SS58_BYTES_LENGTH];
+        let ident: u16 = prefix & 0b0011_1111_1111_1111; // 14-bit only
+
+        match ident {
+            0..=63 => version_buffer[0] = ident as u8,
             64..=16_383 => {
                 let first = (((ident & 0b0000_0000_1111_1100) as u8) >> 2) | 0b01000000;
                 let second = ((ident >> 8) as u8) | ((ident & 0b0000_0000_0000_0011) as u8) << 6;
 
-                vec![first, second]
+                version_buffer[0] = first;
+                version_buffer[1] = second;
             }
             _ => unreachable!("No way this will be executed"),
-        };
-        version.extend(self.0.as_ref());
-        let mut version_hash = Blake2b512::new();
-        version_hash.update(Self::PREFIX_SS58);
-        version_hash.update(&version);
-        let version_hash = version_hash.finalize().to_vec();
-        version.extend(&version_hash[0..2]);
+        }
 
-        bs58::encode(version).into_string()
+        let version_buffer_infix = &mut version_buffer[Self::SS58_BYTES_INFIX_RANGE];
+        version_buffer_infix.copy_from_slice(&self.0[..]);
+        let mut hasher = Blake2b512::new();
+        hasher.update(Self::PREFIX_SS58);
+        hasher.update(&version_buffer[..Self::SS58_BYTES_SUFFIX_INDEX]);
+        hasher.finalize_into((&mut hash_buffer).into());
+        let version_buffer_without_prefix = &mut version_buffer[Self::SS58_BYTES_SUFFIX_RANGE];
+        version_buffer_without_prefix.copy_from_slice(&hash_buffer[..Self::SS58_BYTES_SUFFIX_LENGTH]);
+        let string_length = bs58::encode(&version_buffer[..]).into(&mut ss58_string_buffer[..]).unwrap(); // infallible
+
+        std::str::from_utf8(&ss58_string_buffer[..string_length]).unwrap().to_owned()
     }
 }
 
@@ -116,13 +134,13 @@ impl DerefMut for SignerPublicKey {
 
 impl Default for SignerPublicKey {
     fn default() -> Self {
-        Self([0u8; Self::LENGTH])
+        Self([0u8; Self::PUBKEY_LENGTH])
     }
 }
 
 impl Display for SignerPublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.get_string_with_prefix(Self::PREFIX_DEFAULT))
+        write!(f, "{}", self.get_ss58_string(Self::PREFIX_DEFAULT))
     }
 }
 

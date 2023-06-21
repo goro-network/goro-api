@@ -1,4 +1,4 @@
-pub use std_mod::{decrypt_alloc, encrypt_alloc, DecryptedBytes, EncryptionResult};
+pub use std_mod::{decrypt, encrypt, DecryptedBytes, EncryptionResult};
 
 pub const TAG_LENGTH: usize = 16;
 pub const KEY_LENGTH: usize = 16;
@@ -68,16 +68,24 @@ mod std_mod {
         }
     }
 
-    pub fn encrypt_alloc(nonce: &Nonce, key: &Key, input: &[u8]) -> EncryptionResult {
-        let encryptor = Morus::new(nonce, key);
+    pub fn encrypt(nonce: &Nonce, key: &Key, input: &[u8]) -> EncryptionResult {
+        let mut encryption_result = EncryptionResult {
+            result: vec![0u8; input.len()],
+            tag: Default::default(),
+        };
+        encryption_result.result.copy_from_slice(input);
+        encryption_result.tag = Morus::new(nonce, key).encrypt_in_place(&mut encryption_result.result[..], &[]);
 
-        encryptor.encrypt(input, &[]).into()
+        encryption_result
     }
 
-    pub fn decrypt_alloc(nonce: &Nonce, key: &Key, tag: &Tag, encrypted_bytes: &[u8]) -> Result<DecryptedBytes, GoRoError> {
-        let decryptor = Morus::new(nonce, key);
-        let decrypted_bytes = decryptor.decrypt(encrypted_bytes, tag, &[])?;
+    pub fn decrypt(nonce: &Nonce, key: &Key, tag: &Tag, encrypted_bytes: &[u8]) -> Result<DecryptedBytes, GoRoError> {
+        let mut decrypted_result = DecryptedBytes {
+            inner: vec![0u8; encrypted_bytes.len()],
+        };
+        decrypted_result.inner.copy_from_slice(encrypted_bytes);
+        Morus::new(nonce, key).decrypt_in_place(&mut decrypted_result.inner, tag, &[])?;
 
-        Ok(decrypted_bytes.into())
+        Ok(decrypted_result)
     }
 }
