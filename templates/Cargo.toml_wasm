@@ -15,9 +15,7 @@ anyhow = { version = "1.0.71", default-features = false }
 blake2 = { version = "0.10.6", default-features = false }
 blake3 = { version = "1.4.0", default-features = false }
 bs58 = { version = "0.4.0", default-features = false }
-ed25519-dalek = { version = "1.0.1", default-features = false, features = [
-    "u32_backend",
-] }
+ed25519-zebra = { version = "3.1.0", default-features = false }
 getrandom = { version = "0.2.10", default-features = false, features = [
     "js",
     "wasm-bindgen",

@@ -1,8 +1,8 @@
 [env]
-AR_aarch64-linux-android = "aarch64-linux-android-ar"
+AR_aarch64-linux-android = "llvm-ar"
 CC_aarch64-linux-android = "aarch64-linux-android28-clang"
 CXX_aarch64-linux-android = "aarch64-linux-android28-clang++"
-AR_x86_64-linux-android = "x86_64-linux-android-ar"
+AR_x86_64-linux-android = "llvm-ar"
 CC_x86_64-linux-android = "x86_64-linux-android28-clang"
 CXX_x86_64-linux-android = "x86_64-linux-android28-clang++"
 

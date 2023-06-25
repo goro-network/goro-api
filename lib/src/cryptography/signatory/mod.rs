@@ -1,111 +1,58 @@
+pub mod private;
 pub mod public;
 
 use crate::errors::GoRoError;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-pub type SignerAccount = public::SignerPublicKey;
-
-#[derive(Zeroize, ZeroizeOnDrop)]
-pub enum SignerSecret {
-    Sr25519(schnorrkel::MiniSecretKey),
-    Ed25519(ed25519_dalek::SecretKey),
-}
+pub type SignerAccount = public::SignerAccount;
 
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct SignerKeypair {
+    private: private::SignerSecret,
     #[zeroize(skip)]
     public: SignerAccount,
-    private: SignerSecret,
 }
 
 impl SignerKeypair {
-    pub const LENGTH_SECRET: usize = 32;
+    pub const LENGTH_SECRET: usize = private::SignerSecret::PRIKEY_LENGTH;
     pub const LENGTH_PUBLIC: usize = SignerAccount::PUBKEY_LENGTH;
-    pub const LENGTH_SIGNATURE: usize = 64;
-    pub const SIGNING_CONTEXT: &[u8] = b"substrate";
-    pub const SR25519_EXPANSION_MODE: schnorrkel::ExpansionMode = schnorrkel::MiniSecretKey::ED25519_MODE;
+    pub const LENGTH_SIGNATURE: usize = private::SignerSecret::SIGNATURE_LENGTH;
 
-    pub fn generate_sr25519() -> Self {
-        let mini_secret_key = schnorrkel::MiniSecretKey::generate();
-        let keypair = mini_secret_key.expand_to_keypair(Self::SR25519_EXPANSION_MODE);
-        let public = SignerAccount::from(keypair.public.to_bytes());
-        let private = SignerSecret::Sr25519(mini_secret_key);
-
-        Self { public, private }
-    }
-
-    pub fn generate_ed25519() -> Self {
-        let schnorrkel_mini_secret_key = schnorrkel::MiniSecretKey::generate();
-        let ed25519_secret = ed25519_dalek::SecretKey::from_bytes(schnorrkel_mini_secret_key.as_bytes()).unwrap();
-        let ed25519_public = ed25519_dalek::PublicKey::from(&ed25519_secret);
-        let public = SignerAccount::from(ed25519_public.to_bytes());
-        let private = SignerSecret::Ed25519(ed25519_secret);
+    pub fn generate(is_ed25519: bool) -> Self {
+        let private = if is_ed25519 {
+            private::SignerSecret::generate_sr25519()
+        } else {
+            private::SignerSecret::generate_ed25519()
+        };
+        let public = private.get_account();
 
         Self { public, private }
     }
 
-    pub fn try_from_sr25519_secret_bytes(secret_bytes: &[u8]) -> Result<Self, GoRoError> {
-        if secret_bytes.len() != Self::LENGTH_SECRET {
-            return Err(GoRoError::BadInputBufferLength {
-                expected: Self::LENGTH_SECRET,
-                given: secret_bytes.len(),
-            });
-        }
+    pub fn try_from_secret_bytes(is_ed25519: bool, secret_bytes: &[u8]) -> Result<Self, GoRoError> {
+        let private = if is_ed25519 {
+            private::SignerSecret::try_from_ed25519_secret_bytes(secret_bytes)?
+        } else {
+            private::SignerSecret::try_from_sr25519_secret_bytes(secret_bytes)?
+        };
+        let public = private.get_account();
 
-        let mini_secret_key = schnorrkel::MiniSecretKey::from_bytes(secret_bytes).unwrap();
-        let keypair = mini_secret_key.expand_to_keypair(schnorrkel::ExpansionMode::Ed25519);
-        let public = SignerAccount::from(keypair.public.to_bytes());
-        let private = SignerSecret::Sr25519(mini_secret_key);
-
-        Ok(Self { public, private })
+        Ok(Self { private, public })
     }
 
-    pub fn try_from_ed25519_secret_bytes(secret_bytes: &[u8]) -> Result<Self, GoRoError> {
-        if secret_bytes.len() != Self::LENGTH_SECRET {
-            return Err(GoRoError::BadInputBufferLength {
-                expected: Self::LENGTH_SECRET,
-                given: secret_bytes.len(),
-            });
-        }
-
-        let schnorrkel_mini_secret_key = schnorrkel::MiniSecretKey::from_bytes(secret_bytes).unwrap();
-        let ed25519_secret = ed25519_dalek::SecretKey::from_bytes(schnorrkel_mini_secret_key.as_bytes()).unwrap();
-        let ed25519_public = ed25519_dalek::PublicKey::from(&ed25519_secret);
-        let public = SignerAccount::from(ed25519_public.to_bytes());
-        let private = SignerSecret::Ed25519(ed25519_secret);
-
-        Ok(Self { public, private })
+    pub fn is_ed25519(&self) -> bool {
+        self.private.is_ed25519
     }
 
     pub fn sign(&self, message: &[u8]) -> [u8; Self::LENGTH_SIGNATURE] {
-        match &self.private {
-            SignerSecret::Ed25519(inner) => {
-                let expanded_secret_key = ed25519_dalek::ExpandedSecretKey::from(inner);
-                let public_key = ed25519_dalek::PublicKey::from(inner);
-                let signature = expanded_secret_key.sign(message, &public_key);
-
-                signature.to_bytes()
-            }
-            SignerSecret::Sr25519(inner) => {
-                let expanded_secret_key = inner.expand(Self::SR25519_EXPANSION_MODE);
-                let public_key = expanded_secret_key.to_public();
-                let signature = expanded_secret_key.sign_simple(Self::SIGNING_CONTEXT, message, &public_key);
-
-                signature.to_bytes()
-            }
-        }
+        self.private.sign(message)
     }
 
-    pub fn verify(&self, message: &[u8], signature: &[u8; Self::LENGTH_SIGNATURE]) -> bool {
-        match &self.private {
-            SignerSecret::Ed25519(_) => true,
-            SignerSecret::Sr25519(inner) => {
-                let keypair = inner.expand_to_keypair(Self::SR25519_EXPANSION_MODE);
-                let signature_sr25519 = schnorrkel::Signature::from_bytes(&signature[..]).unwrap();
-                let result = keypair.verify_simple(Self::SIGNING_CONTEXT, message, &signature_sr25519);
-
-                result.is_ok()
-            }
+    pub fn verify(&self, message: &[u8], signature: &[u8; Self::LENGTH_SIGNATURE]) -> Result<bool, GoRoError> {
+        if self.is_ed25519() {
+            self.public.verify_ed25519_signature(signature, message)
+        } else {
+            self.public.verify_sr25519_signature(signature, message)
         }
     }
 }
@@ -135,7 +82,7 @@ mod unit_tests {
     #[test]
     fn alice_sr25519_signature_is_correct() {
         let minisecret_bytes = decode(ALICE_MINISECRET_HEX).unwrap();
-        let signer = SignerKeypair::try_from_sr25519_secret_bytes(&minisecret_bytes).unwrap();
+        let signer = SignerKeypair::try_from_secret_bytes(false, &minisecret_bytes).unwrap();
         let message_bytes = decode(MESSAGE_HEX).unwrap();
         let signature = signer.sign(&message_bytes);
         let signature = Sr25519Signature::from_slice(&signature).unwrap();
@@ -147,7 +94,7 @@ mod unit_tests {
     #[test]
     fn alice_ed25519_signature_is_correct() {
         let minisecret_bytes = decode(ALICE_MINISECRET_HEX).unwrap();
-        let signer = SignerKeypair::try_from_ed25519_secret_bytes(&minisecret_bytes).unwrap();
+        let signer = SignerKeypair::try_from_secret_bytes(true, &minisecret_bytes).unwrap();
         let message_bytes = decode(MESSAGE_HEX).unwrap();
         let signature = signer.sign(&message_bytes);
         let signature = Ed25519Signature::from_slice(&signature).unwrap();
@@ -159,7 +106,7 @@ mod unit_tests {
     #[test]
     fn alice_sr25519_pubkey_from_minisecret_is_correct() {
         let minisecret_bytes = decode(ALICE_MINISECRET_HEX).unwrap();
-        let signer = SignerKeypair::try_from_sr25519_secret_bytes(&minisecret_bytes).unwrap();
+        let signer = SignerKeypair::try_from_secret_bytes(false, &minisecret_bytes).unwrap();
         let pubkey = encode::<&[u8]>(&signer.public);
 
         assert_eq!(pubkey, EXPECTED_SR25519_PUBKEY);
@@ -168,7 +115,7 @@ mod unit_tests {
     #[test]
     fn alice_sr25519_address_from_minisecret_is_correct() {
         let minisecret_bytes = decode(ALICE_MINISECRET_HEX).unwrap();
-        let signer = SignerKeypair::try_from_sr25519_secret_bytes(&minisecret_bytes).unwrap();
+        let signer = SignerKeypair::try_from_secret_bytes(false, &minisecret_bytes).unwrap();
         let address = signer.to_string();
 
         assert_eq!(address, EXPECTED_SR25519_ADDRESS);
@@ -177,7 +124,7 @@ mod unit_tests {
     #[test]
     fn alice_ed25519_pubkey_from_minisecret_is_correct() {
         let minisecret_bytes = decode(ALICE_MINISECRET_HEX).unwrap();
-        let signer = SignerKeypair::try_from_ed25519_secret_bytes(&minisecret_bytes).unwrap();
+        let signer = SignerKeypair::try_from_secret_bytes(true, &minisecret_bytes).unwrap();
         let pubkey = encode::<&[u8]>(&signer.public);
 
         assert_eq!(pubkey, EXPECTED_ED25519_PUBKEY);
@@ -186,7 +133,7 @@ mod unit_tests {
     #[test]
     fn alice_ed25519_address_from_minisecret_is_correct() {
         let minisecret_bytes = decode(ALICE_MINISECRET_HEX).unwrap();
-        let signer = SignerKeypair::try_from_ed25519_secret_bytes(&minisecret_bytes).unwrap();
+        let signer = SignerKeypair::try_from_secret_bytes(true, &minisecret_bytes).unwrap();
         let address = signer.to_string();
 
         assert_eq!(address, EXPECTED_ED25519_ADDRESS);
