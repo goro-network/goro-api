@@ -1,5 +1,5 @@
 use crate::errors::GoRoError;
-use blake3::{hash as blake3_hash, keyed_hash as blake3_keyed_hash, Hasher as Blake3Hasher, KEY_LEN, OUT_LEN};
+use blake3::{derive_key, hash as blake3_hash, keyed_hash as blake3_keyed_hash, Hasher as Blake3Hasher, KEY_LEN, OUT_LEN};
 
 pub struct Hasher {
     inner: Blake3Hasher,
@@ -9,7 +9,7 @@ impl Hasher {
     pub const OUTPUT_LENGTH: usize = OUT_LEN;
     pub const KEY_LENGTH: usize = KEY_LEN;
 
-    pub fn new(key: Option<&[u8]>) -> Result<Self, GoRoError> {
+    pub fn new(key: Option<&[u8; Self::KEY_LENGTH]>) -> Result<Self, GoRoError> {
         let inner;
 
         if let Some(hasher_key) = key {
@@ -20,8 +20,7 @@ impl Hasher {
                 });
             }
 
-            let key = hasher_key.try_into().unwrap();
-            inner = Blake3Hasher::new_keyed(key);
+            inner = Blake3Hasher::new_keyed(hasher_key);
         } else {
             inner = Blake3Hasher::new();
         }
@@ -33,18 +32,9 @@ impl Hasher {
         self.inner.update(data);
     }
 
-    pub fn finalize_into(self, hash_output: &mut [u8]) -> Result<(), GoRoError> {
-        if hash_output.len() != OUT_LEN {
-            return Err(GoRoError::BadDestinationLength {
-                expected: OUT_LEN,
-                given: hash_output.len(),
-            });
-        }
-
+    pub fn finalize_into(self, hash_output: &mut [u8; Self::OUTPUT_LENGTH]) {
         let hash = self.inner.finalize();
         hash_output.copy_from_slice(&hash.as_bytes()[..]);
-
-        Ok(())
     }
 
     pub fn hash_once(key: Option<&[u8]>, data: &[u8], hash_output: &mut [u8]) -> Result<(), GoRoError> {
@@ -74,5 +64,9 @@ impl Hasher {
         hash_output.copy_from_slice(&hash.as_bytes()[..]);
 
         Ok(())
+    }
+
+    pub fn derive_key(context: &str, root_key: &[u8]) -> [u8; Self::KEY_LENGTH] {
+        derive_key(context, root_key)
     }
 }
