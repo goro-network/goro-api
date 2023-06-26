@@ -242,7 +242,7 @@ mod unit_tests {
     fn encode_alice_goro_is_correct() {
         let sr25519_pubkey = SignerAccount::try_from(ALICE_SR25519_HEX).unwrap();
         let ed25519_pubkey = SignerAccount::try_from(ALICE_ED25519_HEX).unwrap();
-        let sr25519_goro = sr25519_pubkey.to_string();
+        let sr25519_goro = sr25519_pubkey.get_goro_address();
         let ed25519_goro = ed25519_pubkey.to_string();
         let sr25519_substrate_account = AccountId32::from_ss58check(&sr25519_goro).unwrap();
         let ed25519_substrate_account = AccountId32::from_ss58check(&ed25519_goro).unwrap();

@@ -55,6 +55,14 @@ impl SignerKeypair {
             self.public.verify_sr25519_signature(signature, message)
         }
     }
+
+    pub fn verify_with_string_account(string_account: &str, signature: &[u8], message: &[u8]) -> Result<bool, GoRoError> {
+        SignerAccount::verify_with_string_account(string_account, signature, message)
+    }
+
+    pub fn verify_with_bytes_account(bytes_account: &[u8], signature: &[u8], message: &[u8]) -> Result<bool, GoRoError> {
+        SignerAccount::verify_with_bytes_account(bytes_account, signature, message)
+    }
 }
 
 impl std::fmt::Display for SignerKeypair {
@@ -74,10 +82,10 @@ mod unit_tests {
 
     const MESSAGE_HEX: &str = "deadbeef";
     const ALICE_MINISECRET_HEX: &str = "e5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a";
-    const EXPECTED_SR25519_PUBKEY: &str = "d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
-    const EXPECTED_SR25519_ADDRESS: &str = "gr5wupneKLGRBrA3hkcrXgbwXp1F26SV7L4LymGxCKs9QMXn1";
-    const EXPECTED_ED25519_PUBKEY: &str = "34602b88f60513f1c805d87ef52896934baf6a662bc37414dbdbf69356b1a691";
-    const EXPECTED_ED25519_ADDRESS: &str = "gr2LLpGt2rLUixu5YzrWNvbX9qJeavgZLh95UpwBpvZSq6xpA";
+    const ALICE_PUBKEY_SR25519: &str = "d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
+    const ALICE_SS58_SR25519: &str = "gr5wupneKLGRBrA3hkcrXgbwXp1F26SV7L4LymGxCKs9QMXn1";
+    const ALICE_PUBKEY_ED25519: &str = "34602b88f60513f1c805d87ef52896934baf6a662bc37414dbdbf69356b1a691";
+    const ALICE_SS58_ED25519: &str = "gr2LLpGt2rLUixu5YzrWNvbX9qJeavgZLh95UpwBpvZSq6xpA";
 
     #[test]
     fn alice_sr25519_signature_is_correct() {
@@ -86,7 +94,7 @@ mod unit_tests {
         let message_bytes = decode(MESSAGE_HEX).unwrap();
         let signature = signer.sign(&message_bytes);
         let signature = Sr25519Signature::from_slice(&signature).unwrap();
-        let substrate_pubkey = Sr25519PublicKey::from_ss58check(EXPECTED_SR25519_ADDRESS).unwrap();
+        let substrate_pubkey = Sr25519PublicKey::from_ss58check(ALICE_SS58_SR25519).unwrap();
 
         assert!(Sr25519KeyPair::verify(&signature, &message_bytes, &substrate_pubkey));
     }
@@ -98,7 +106,7 @@ mod unit_tests {
         let message_bytes = decode(MESSAGE_HEX).unwrap();
         let signature = signer.sign(&message_bytes);
         let signature = Ed25519Signature::from_slice(&signature).unwrap();
-        let substrate_pubkey = Ed25519PublicKey::from_ss58check(EXPECTED_ED25519_ADDRESS).unwrap();
+        let substrate_pubkey = Ed25519PublicKey::from_ss58check(ALICE_SS58_ED25519).unwrap();
 
         assert!(Ed25519KeyPair::verify(&signature, &message_bytes, &substrate_pubkey));
     }
@@ -109,7 +117,7 @@ mod unit_tests {
         let signer = SignerKeypair::try_from_secret_bytes(false, &minisecret_bytes).unwrap();
         let pubkey = encode::<&[u8]>(&signer.public);
 
-        assert_eq!(pubkey, EXPECTED_SR25519_PUBKEY);
+        assert_eq!(pubkey, ALICE_PUBKEY_SR25519);
     }
 
     #[test]
@@ -118,7 +126,7 @@ mod unit_tests {
         let signer = SignerKeypair::try_from_secret_bytes(false, &minisecret_bytes).unwrap();
         let address = signer.to_string();
 
-        assert_eq!(address, EXPECTED_SR25519_ADDRESS);
+        assert_eq!(address, ALICE_SS58_SR25519);
     }
 
     #[test]
@@ -127,7 +135,7 @@ mod unit_tests {
         let signer = SignerKeypair::try_from_secret_bytes(true, &minisecret_bytes).unwrap();
         let pubkey = encode::<&[u8]>(&signer.public);
 
-        assert_eq!(pubkey, EXPECTED_ED25519_PUBKEY);
+        assert_eq!(pubkey, ALICE_PUBKEY_ED25519);
     }
 
     #[test]
@@ -136,6 +144,40 @@ mod unit_tests {
         let signer = SignerKeypair::try_from_secret_bytes(true, &minisecret_bytes).unwrap();
         let address = signer.to_string();
 
-        assert_eq!(address, EXPECTED_ED25519_ADDRESS);
+        assert_eq!(address, ALICE_SS58_ED25519);
+    }
+
+    #[test]
+    fn alice_sr25519_substrate_signature_can_be_verified_correctly() {
+        let minisecret_bytes = decode(ALICE_MINISECRET_HEX).unwrap();
+        let pubkey_bytes = decode(ALICE_PUBKEY_SR25519).unwrap();
+        let signer = Sr25519KeyPair::from_seed_slice(&minisecret_bytes).unwrap();
+        let message_bytes = decode(MESSAGE_HEX).unwrap();
+        let signature = signer.sign(&message_bytes);
+        let verification_ss58 =
+            SignerKeypair::verify_with_string_account(ALICE_SS58_SR25519, signature.as_ref(), &message_bytes);
+        let verification_bytes = SignerKeypair::verify_with_bytes_account(&pubkey_bytes, signature.as_ref(), &message_bytes);
+
+        assert!(verification_ss58.is_ok());
+        assert!(verification_ss58.unwrap());
+        assert!(verification_bytes.is_ok());
+        assert!(verification_bytes.unwrap());
+    }
+
+    #[test]
+    fn alice_ed25519_substrate_signature_can_be_verified_correctly() {
+        let minisecret_bytes = decode(ALICE_MINISECRET_HEX).unwrap();
+        let pubkey_bytes = decode(ALICE_PUBKEY_ED25519).unwrap();
+        let signer = Ed25519KeyPair::from_seed_slice(&minisecret_bytes).unwrap();
+        let message_bytes = decode(MESSAGE_HEX).unwrap();
+        let signature = signer.sign(&message_bytes);
+        let verification_ss58 =
+            SignerKeypair::verify_with_string_account(ALICE_SS58_ED25519, signature.as_ref(), &message_bytes);
+        let verification_bytes = SignerKeypair::verify_with_bytes_account(&pubkey_bytes, signature.as_ref(), &message_bytes);
+
+        assert!(verification_ss58.is_ok());
+        assert!(verification_ss58.unwrap());
+        assert!(verification_bytes.is_ok());
+        assert!(verification_bytes.unwrap());
     }
 }
